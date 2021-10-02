@@ -83,7 +83,8 @@ namespace ChatServer
 
 
                     //adding the connection to connections list and starting the message transfer
-                    Task.Run(() => transferMessages(newClientConnection));
+                    clientsList.Add(newClientConnection);
+                    Task.Run(() => transferMessages(clientsList[clientsList.Count-1]));
                 }
             }
             catch (Exception e)
@@ -116,6 +117,7 @@ namespace ChatServer
 
         private void transferMessages(Socket connection)
         {
+            Console.WriteLine($"Starting transfering messages to {connection}");
             while (true)
             {
                 try
@@ -130,10 +132,10 @@ namespace ChatServer
 
                     //Send it to all other clients
 
-                    for (int i = 0; i < clientsList.Count; i++)
+                    for (int i = 0; i < this.clientsList.Count; i++)
                     {
-                        if (clientsList[i] == connection) { continue; }
-
+                        //if (clientsList[i] == connection) { continue; }
+                        Console.WriteLine("Sent message to client");
                         clientsList[i].Send(receivedMessageEncoded);
                     }
                 }
@@ -149,6 +151,7 @@ namespace ChatServer
                 {
                     Console.WriteLine($"Encountered unintended exception: {e}");
                     Console.WriteLine("Severing the connection");
+                    connection.Dispose();
                     return;
                 }
                 
