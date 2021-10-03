@@ -82,7 +82,7 @@ namespace ChatServer
 
                     //adding the connection to connections list and starting the message transfer
                     clientsList.Add(newClientConnection);
-                    Task.Run(() => transferMessages(clientsList[clientsList.Count-1]));
+                    Task.Run(() => transferMessages(clientsList[clientsList.Count-1], clientsList.Count-1));
                 }
             }
             catch (Exception e)
@@ -113,7 +113,7 @@ namespace ChatServer
         //    this.clientsList.Add(newConnection);
         //}
 
-        private void transferMessages(Socket connection)
+        private void transferMessages(Socket connection, int socketPosition)
         {
             Console.WriteLine($"Starting transfering messages to {connection}");
             while (true)
@@ -133,8 +133,8 @@ namespace ChatServer
                     for (int i = 0; i < this.clientsList.Count; i++)
                     {
                         //if (clientsList[i] == connection) { continue; }
-                        Console.WriteLine("Sent message to client");
                         clientsList[i].Send(receivedMessageEncoded);
+                        Console.WriteLine("Sent message to client");
                     }
                 }
                 //Client ended connection (either knowingly or by some connection issue)
@@ -143,6 +143,7 @@ namespace ChatServer
                     Console.WriteLine($"Encountered SocketException: {se}");
                     Console.WriteLine("Socket timed out, severing the connection");
                     connection.Close();
+                    clientsList.RemoveAt(socketPosition);
                     return;
                 }
                 catch (Exception e)
@@ -150,6 +151,7 @@ namespace ChatServer
                     Console.WriteLine($"Encountered unintended exception: {e}");
                     Console.WriteLine("Severing the connection");
                     connection.Dispose();
+                    clientsList.RemoveAt(socketPosition);
                     return;
                 }
                 
