@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net.Sockets;
@@ -13,19 +12,18 @@ namespace ChatServer
     {
         private List<Socket> clientsList = new List<Socket>();
         
-        public Server()
+        public Server(string ip = "127.0.0.1", int port = 12345)
         {
             //Resolve connection data
-            IPHostEntry ipHost = Dns.GetHostEntry("127.0.0.1");
-            IPAddress ipAddress = ipHost.AddressList[0];
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 12345);
+            IPAddress ipAddress = IPAddress.Parse(ip);
+            IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
             activateAsyncListener(ipAddress, ipEndPoint);
         }
 
         private void activateListener(IPAddress ip, IPEndPoint endPoint)
         {
             // Data buffer for incoming data.  
-            byte[] bytes = new Byte[1024];
+            byte[] bytes = new byte[1024];
 
             //Create server listener
             Socket listener = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
