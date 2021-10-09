@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using System.Net;
+using System.Buffers;
 
 namespace ChatServer
 {
@@ -23,7 +24,10 @@ namespace ChatServer
         private void activateListener(IPAddress ip, IPEndPoint endPoint)
         {
             // Data buffer for incoming data.  
-            byte[] bytes = new byte[1024];
+            //This allocates memory and might cause memory problems later on
+            //byte[] bytes = new byte[1024];
+
+            using IMemoryOwner<byte> bytes = MemoryPool<byte>.Shared.Rent(1024);
 
             //Create server listener
             Socket listener = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -41,8 +45,8 @@ namespace ChatServer
 
                     while (true)
                     {
-                        int receivedBytes = handler.Receive(bytes);
-                        receivedMsg += Encoding.ASCII.GetString(bytes, 0, receivedBytes);
+                        int receivedBytes = handler.Receive(bytes.Memory.Span);
+                        receivedMsg += Encoding.ASCII.GetString(bytes.Memory.Span);
                         if (receivedMsg.IndexOf("<EOF>") > -1)
                         {
                             break;
@@ -121,19 +125,30 @@ namespace ChatServer
                 try
                 {
                     //Receive message
-                    byte[] receivedMessageEncoded = new byte[1024];
-                    connection.Receive(receivedMessageEncoded);
+                    //This might cause problems with memory later on
+                    //byte[] receivedMessageEncoded = new byte[1024];
+
+                    //So we are using this, this should create and release rented buffer which will dispose itself when not needed
+                    using IMemoryOwner<byte> receivedMessageEncoded = MemoryPool<byte>.Shared.Rent(1024);
+
+                    // Sometimes the memory span may contain leftover values, so we have to clear them
+                    // Not sure how optimal this is, might be subject to change
+                    // TODO: Read on memory span clearing
+                    receivedMessageEncoded.Memory.Span.Clear();
+
+                    connection.Receive(receivedMessageEncoded.Memory.Span);
+                    Console.WriteLine($"Message in memory: {receivedMessageEncoded.Memory.Span.ToString()}");
 
                     //Decode it and print, this is for debug only
-                    string receivedMessageDecoded = Encoding.ASCII.GetString(receivedMessageEncoded);
+                    string receivedMessageDecoded = Encoding.ASCII.GetString(receivedMessageEncoded.Memory.Span);
                     Console.WriteLine($"Received message: {receivedMessageDecoded}");
 
-                    //Send it to all other clients
+                    //Send it to all clients
 
                     for (int i = 0; i < this.clientsList.Count; i++)
                     {
                         //if (clientsList[i] == connection) { continue; }
-                        clientsList[i].Send(receivedMessageEncoded);
+                        clientsList[i].Send(receivedMessageEncoded.Memory.Slice(0, receivedMessageEncoded.Memory.Span.Length).Span);
                         Console.WriteLine("Sent message to client");
                     }
                 }
