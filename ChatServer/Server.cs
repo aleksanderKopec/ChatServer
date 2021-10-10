@@ -13,15 +13,34 @@ namespace ChatServer
     {
         private List<Socket> clientsList = new List<Socket>();
         
-        public Server(string ip = "127.0.0.1", int port = 12345)
+        public Server(string ipOrHost = "127.0.0.1", int port = 12345)
         {
             //Resolve connection data
-            IPAddress ipAddress = IPAddress.Parse(ip);
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
-            activateAsyncListener(ipAddress, ipEndPoint);
+            //IPAddress ipAddress = IPAddress.Parse(ip);
+            //IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
+
+            EndPoint endPoint = resolveConnectionData(ipOrHost, port);
+            activateAsyncListener(endPoint.AddressFamily, endPoint);
         }
 
-        private void activateListener(IPAddress ip, IPEndPoint endPoint)
+        private EndPoint resolveConnectionData(string ipOrHost, int port)
+        {
+            try
+            {
+                IPAddress ip = IPAddress.Parse(ipOrHost);
+                IPEndPoint ipEndPoint = new IPEndPoint(ip, port);
+                return ipEndPoint;
+            }
+            catch( FormatException )
+            {
+                DnsEndPoint dnsEndPoint = new DnsEndPoint(ipOrHost, port);
+                return dnsEndPoint;
+            }
+            
+            
+        }
+
+        private void activateListener(AddressFamily ipAddressFamily, EndPoint endPoint)
         {
             // Data buffer for incoming data.  
             //This allocates memory and might cause memory problems later on
@@ -30,7 +49,7 @@ namespace ChatServer
             using IMemoryOwner<byte> bytes = MemoryPool<byte>.Shared.Rent(1024);
 
             //Create server listener
-            Socket listener = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            Socket listener = new Socket(ipAddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
             try
             {
@@ -68,9 +87,9 @@ namespace ChatServer
             }
         }
 
-        private void activateAsyncListener(IPAddress ip, IPEndPoint endPoint)
+        private void activateAsyncListener(AddressFamily ipAddressFamily, EndPoint endPoint)
         {
-            Socket listener = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            Socket listener = new Socket(ipAddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
             try
             {
